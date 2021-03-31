@@ -1,7 +1,7 @@
 # rust-openssl-kdf
 Wrappers for the EVP_KDF functionality of OpenSSL.
 
-NOTE: Once OpenSSL 3.0 has been released and support for KDF has been added to [rust-openssl](https://github.com/sfackler/rust-openssl), this crate will likely be deprecated.
+*NOTE: Once OpenSSL 3.0 has been released and support for KDF has been added to [rust-openssl](https://github.com/sfackler/rust-openssl), this crate will likely be deprecated.*
 
 This implements Rust wrappers for the EVP_KDF functionality in OpenSSL, among which is KBKDF, as specified in [NIST SP800-108](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf).
 
