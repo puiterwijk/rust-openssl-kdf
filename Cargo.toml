@@ -1,0 +1,13 @@
+[package]
+name = "openssl-kdf"
+version = "0.1.0"
+description = "OpenSSL KDF function abstraction"
+license = "MIT"
+homepage = "https://github.com/puiterwijk/rust-openssl-kdf/"
+authors = ["Patrick Uiterwijk <patrick@puiterwijk.org>"]
+edition = "2018"
+
+[dependencies]
+openssl = "0.10"
+libc = "0.2"
+foreign-types = "0.3.1"
