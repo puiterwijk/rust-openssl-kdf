@@ -1,3 +1,13 @@
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum KdfError {
+    #[error("OpenSSL error: {0:?}")]
+    OpenSSL(#[from] openssl::error::ErrorStack),
+    #[error("Unsupported option for current backend: {0}")]
+    UnsupportedOption(&'static str),
+}
+
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum KdfKbMode {
@@ -70,7 +80,7 @@ pub fn perform_kdf<'a>(
     type_: KdfType,
     args: &[&'a KdfArgument],
     length: usize,
-) -> Result<Vec<u8>, openssl::error::ErrorStack> {
+) -> Result<Vec<u8>, KdfError> {
     #[cfg(implementation = "ossl11")]
     {
         ossl11::perform(type_, args, length)

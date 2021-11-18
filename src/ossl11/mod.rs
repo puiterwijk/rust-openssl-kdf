@@ -3,13 +3,13 @@ mod sys;
 mod utils;
 use utils::{cvt, cvt_p};
 
-use crate::{KdfArgument, KdfType};
+use crate::{KdfError, KdfArgument, KdfType};
 
 pub(crate) fn perform<'a>(
     type_: crate::KdfType,
     args: &[&'a KdfArgument],
     length: usize,
-) -> Result<Vec<u8>> {
+) -> core::result::Result<Vec<u8>, KdfError> {
     let mut kdf = Kdf::new(type_)?;
 
     for arg in args {
@@ -41,7 +41,7 @@ pub(crate) fn perform<'a>(
         }
     }
 
-    kdf.derive(length)
+    kdf.derive(length).map_err(KdfError::from)
 }
 
 use openssl::{hash::MessageDigest, symm::Cipher};
