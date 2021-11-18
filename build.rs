@@ -35,6 +35,11 @@ fn main() {
         implementation = "custom";
     }
 
+    #[cfg(feature = "deny_custom")]
+    if implementation == "custom" {
+        panic!("The 'custom' implementation is not allowed");
+    }
+
     println!("cargo:rustc-cfg=implementation=\"{}\"", implementation);
     println!("cargo::rustc-link-lib=crypto");
 }

@@ -22,5 +22,4 @@ hex = "0.4"
 [features]
 allow_custom = []
 force_custom = []
-
-#default = ["allow_custom", "force_custom"]
+deny_custom = []
