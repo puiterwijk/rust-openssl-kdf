@@ -23,7 +23,8 @@ jobs:
           command: fmt
           args: --all -- --check
 
-  build_and_test:
+  build_and_test_fedora:
+    name: "Tests on Fedora"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -40,3 +41,14 @@ jobs:
         run: "dnf install -y cargo rustc openssl-devel"
       - name: Test
         run: "cargo test ${{ matrix.build_flags }}"
+
+  build_and_test_ubuntu:
+    name: "Tests on Ubuntu"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: "--features allow_custom"
