@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum KdfError {
     #[error("OpenSSL error: {0:?}")]
     OpenSSL(#[from] openssl::error::ErrorStack),
