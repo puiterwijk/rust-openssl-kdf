@@ -72,7 +72,19 @@ pub fn perform_kdf<'a>(
     length: usize,
 ) -> Result<Vec<u8>, openssl::error::ErrorStack> {
     #[cfg(implementation = "ossl11")]
-    ossl11::perform(type_, args, length)
+    {
+        ossl11::perform(type_, args, length)
+    }
+
+    #[cfg(implementation = "ossl3")]
+    {
+        compile_error!("ossl3 is not yet done");
+    }
+
+    #[cfg(implementation = "custom")]
+    {
+        compile_error!("Custom is not yet done");
+    }
 }
 
 #[cfg(implementation = "ossl11")]
