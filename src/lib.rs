@@ -71,20 +71,24 @@ pub fn perform_kdf<'a>(
     args: &[&'a KdfArgument],
     length: usize,
 ) -> Result<Vec<u8>, openssl::error::ErrorStack> {
-    #[cfg(feature = "ossl11")]
+    #[cfg(implementation = "ossl11")]
     ossl11::perform(type_, args, length)
 }
 
-#[cfg(feature = "ossl11")]
+#[cfg(implementation = "ossl11")]
 mod ossl11;
 
-#[cfg(feature = "ossl3")]
+#[cfg(implementation = "ossl3")]
 compile_error!("ossl3 is not yet done");
 
-#[cfg(feature = "custom")]
+#[cfg(implementation = "custom")]
 compile_error!("Custom is not yet done");
 
-#[cfg(not(any(feature = "ossl11", feature = "ossl3", feature = "custom")))]
+#[cfg(not(any(
+    implementation = "ossl11",
+    implementation = "ossl3",
+    implementation = "custom"
+)))]
 compile_error!("No usable implementation detected, and custom not enabled");
 
 #[cfg(test)]

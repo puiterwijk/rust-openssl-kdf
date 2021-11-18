@@ -16,6 +16,5 @@ foreign-types = "0.3.1"
 pkg-config = "0.3"
 
 [features]
-ossl11 = []
-ossl3 = []
-custom = []
+allow_custom = []
+force_custom = []

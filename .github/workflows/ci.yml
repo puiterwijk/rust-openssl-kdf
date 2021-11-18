@@ -31,7 +31,7 @@ jobs:
         fedora_version: [35, rawhide]
         include:
         - fedora_version: latest
-          build_flags: "--features custom"
+          build_flags: "--features allow_custom,force_custom"
     container:
       image: "fedora:${{ matrix.fedora_version }}"
     steps:
