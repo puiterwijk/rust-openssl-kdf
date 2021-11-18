@@ -81,9 +81,13 @@ pub enum KdfArgument<'a> {
 
     KbSeed(&'a [u8]),
 
+    #[cfg(supported_arg = "r")]
     R(u8),
+    #[cfg(supported_arg = "use_separator")]
     UseSeparator(bool),
+    #[cfg(supported_arg = "use_l")]
     UseL(bool),
+    #[cfg(supported_arg = "l_bits")]
     LBits(u8),
 
     Mac(KdfMacType),

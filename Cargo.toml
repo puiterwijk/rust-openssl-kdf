@@ -1,6 +1,6 @@
 [package]
 name = "openssl-kdf"
-version = "0.2.0"
+version = "0.3.0"
 description = "OpenSSL KDF function abstraction"
 license = "MIT"
 homepage = "https://github.com/puiterwijk/rust-openssl-kdf/"
@@ -23,3 +23,6 @@ hex = "0.4"
 allow_custom = []
 force_custom = []
 deny_custom = []
+
+[package.metadata.docs.rs]
+features = ["allow_custom"]

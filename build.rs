@@ -17,6 +17,42 @@ impl ToString for Implementation {
     }
 }
 
+impl Implementation {
+    fn supported_args(&self) -> Vec<SupportedArg> {
+        match self {
+            Implementation::Ossl11 => vec![],
+            Implementation::Ossl3 => vec![],
+            Implementation::Custom => vec![
+                SupportedArg::R,
+                SupportedArg::UseSeparator,
+                SupportedArg::UseL,
+                SupportedArg::LBits,
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+#[allow(unused)]
+enum SupportedArg {
+    R,
+    UseSeparator,
+    UseL,
+    LBits,
+}
+
+impl ToString for SupportedArg {
+    fn to_string(&self) -> String {
+        match self {
+            SupportedArg::R => "r",
+            SupportedArg::UseSeparator => "use_separator",
+            SupportedArg::UseL => "use_l",
+            SupportedArg::LBits => "l_bits",
+        }
+        .to_string()
+    }
+}
+
 #[allow(unreachable_code)]
 fn main() {
     let implementation: Implementation;
@@ -64,5 +100,11 @@ fn main() {
         "cargo:rustc-cfg=implementation=\"{}\"",
         implementation.to_string()
     );
+    for supported_arg in implementation.supported_args() {
+        println!(
+            "cargo:rustc-cfg=supported_arg=\"{}\"",
+            supported_arg.to_string()
+        );
+    }
     println!("cargo::rustc-link-lib=crypto");
 }
