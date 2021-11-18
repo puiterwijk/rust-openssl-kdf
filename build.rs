@@ -51,6 +51,7 @@ fn main() {
         #[cfg(not(feature = "allow_custom"))]
         panic!("Forcing custom without allowing custom");
 
+        eprintln!("WARNING: The `force_custom` feature is enabled. This will cause the custom implementation to be used.");
         implementation = Implementation::Custom;
     }
 
