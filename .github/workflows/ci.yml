@@ -1,0 +1,42 @@
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+name: Continuous integration
+
+jobs:
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: rustup component add rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  build_and_test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora_version: [35, rawhide]
+        include:
+        - fedora_version: latest
+          build_flags: "--features custom"
+    container:
+      image: "fedora:${{ matrix.fedora_version }}"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: "dnf install -y cargo rustc openssl-devel"
+      - name: Test
+        run: "cargo test ${{ matrix.build_flags }}"
