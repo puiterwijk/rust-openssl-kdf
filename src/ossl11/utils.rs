@@ -1,7 +1,7 @@
 use libc::c_int;
 use openssl::error::ErrorStack;
 
-pub(crate) fn cvt_p<T>(r: *mut T) -> Result<*mut T, ErrorStack> {
+pub(super) fn cvt_p<T>(r: *mut T) -> Result<*mut T, ErrorStack> {
     if r.is_null() {
         Err(ErrorStack::get())
     } else {
@@ -9,7 +9,7 @@ pub(crate) fn cvt_p<T>(r: *mut T) -> Result<*mut T, ErrorStack> {
     }
 }
 
-pub(crate) fn cvt(r: c_int) -> Result<c_int, ErrorStack> {
+pub(super) fn cvt(r: c_int) -> Result<c_int, ErrorStack> {
     if r <= 0 {
         Err(ErrorStack::get())
     } else {
