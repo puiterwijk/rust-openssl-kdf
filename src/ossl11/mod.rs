@@ -3,7 +3,7 @@ mod sys;
 mod utils;
 use utils::{cvt, cvt_p};
 
-use crate::{KdfError, KdfArgument, KdfType};
+use crate::{KdfArgument, KdfError, KdfType};
 
 pub(crate) fn perform<'a>(
     type_: crate::KdfType,
