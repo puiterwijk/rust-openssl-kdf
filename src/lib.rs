@@ -78,12 +78,12 @@ pub fn perform_kdf<'a>(
 
     #[cfg(implementation = "ossl3")]
     {
-        compile_error!("ossl3 is not yet done");
+        ossl3::perform(type_, args, length)
     }
 
     #[cfg(implementation = "custom")]
     {
-        compile_error!("Custom is not yet done");
+        custom::perform(type_, args, length)
     }
 }
 
@@ -91,10 +91,10 @@ pub fn perform_kdf<'a>(
 mod ossl11;
 
 #[cfg(implementation = "ossl3")]
-compile_error!("ossl3 is not yet done");
+mod ossl3;
 
 #[cfg(implementation = "custom")]
-compile_error!("Custom is not yet done");
+mod custom;
 
 #[cfg(not(any(
     implementation = "ossl11",
