@@ -7,6 +7,10 @@ pub enum KdfError {
     OpenSSL(#[from] openssl::error::ErrorStack),
     #[error("Unsupported option for current backend: {0}")]
     UnsupportedOption(&'static str),
+    #[error("Required option not specified: {0}")]
+    MissingArgument(&'static str),
+    #[error("Invalid option provided: {0}")]
+    InvalidOption(&'static str),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -24,10 +28,12 @@ pub enum KdfMacType {
 }
 
 impl KdfMacType {
+    #[allow(unused)]
     fn has_md(&self) -> bool {
         matches!(self, KdfMacType::Hmac(_))
     }
 
+    #[allow(unused)]
     fn get_md(&self) -> Option<&openssl::hash::MessageDigest> {
         match self {
             KdfMacType::Hmac(md) => Some(md),
@@ -35,10 +41,12 @@ impl KdfMacType {
         }
     }
 
+    #[allow(unused)]
     fn has_cipher(&self) -> bool {
         matches!(self, KdfMacType::Cmac(_))
     }
 
+    #[allow(unused)]
     fn get_cipher(&self) -> Option<&openssl::symm::Cipher> {
         match self {
             KdfMacType::Cmac(cipher) => Some(cipher),
@@ -72,6 +80,11 @@ pub enum KdfArgument<'a> {
     KbInfo(&'a [u8]),
 
     KbSeed(&'a [u8]),
+
+    R(u8),
+    UseSeparator(bool),
+    UseL(bool),
+    LBits(u8),
 
     Mac(KdfMacType),
     KbMode(KdfKbMode),

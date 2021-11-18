@@ -16,6 +16,11 @@ thiserror = "1"
 [build-dependencies]
 pkg-config = "0.3"
 
+[dev-dependencies]
+hex = "0.4"
+
 [features]
 allow_custom = []
 force_custom = []
+
+#default = ["allow_custom", "force_custom"]

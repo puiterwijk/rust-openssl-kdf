@@ -1,10 +1,67 @@
 #[cfg(test)]
 mod tests {
-    use crate::{KdfArgument, KdfKbMode, KdfMacType, KdfType};
+    use crate::{KdfArgument, KdfError, KdfKbMode, KdfMacType, KdfType};
+    #[allow(unused_imports)]
     use openssl::{hash::MessageDigest, nid::Nid, symm::Cipher};
 
+    // Test cases from the CAVP
+    fn cavp_perform(r: u8, md: MessageDigest, ki: &[u8], fixed: &[u8], expected: &[u8]) {
+        let args = [
+            &KdfArgument::KbMode(KdfKbMode::Counter),
+            &KdfArgument::Mac(KdfMacType::Hmac(md)),
+            &KdfArgument::Salt(&fixed),
+            &KdfArgument::Key(&ki),
+            &KdfArgument::UseSeparator(false),
+            &KdfArgument::UseL(false),
+            &KdfArgument::R(r),
+        ];
+        let key_out = crate::perform_kdf(KdfType::KeyBased, &args, expected.len());
+        if let Err(KdfError::UnsupportedOption(option)) = key_out {
+            eprintln!("Unsupported option: {:?}", option);
+            return;
+        }
+        let key_out = key_out.unwrap();
+        assert_eq!(key_out, expected, "CAVP test case failed: {:?}", args);
+    }
+
     #[test]
-    fn hmac_sha256_deadbeef() {
+    fn cavp_hmac_sha256_8bit() {
+        let ki = hex::decode("3edc6b5b8f7aadbd713732b482b8f979286e1ea3b8f8f99c30c884cfe3349b83")
+            .unwrap();
+        let fixed_input = hex::decode("98e9988bb4cc8b34d7922e1c68ad692ba2a1d9ae15149571675f17a77ad49e80c8d2a85e831a26445b1f0ff44d7084a17206b4896c8112daad18605a").unwrap();
+        let ko = hex::decode("6c037652990674a07844732d0ad985f9").unwrap();
+        cavp_perform(8, MessageDigest::sha256(), &ki, &fixed_input, &ko);
+    }
+
+    #[test]
+    fn cavp_hmac_sha256_16bit() {
+        let ki = hex::decode("743434c930fe923c350ec202bef28b768cd6062cf233324e21a86c31f9406583")
+            .unwrap();
+        let fixed_input = hex::decode("9bdb8a454bd55ab30ced3fd420fde6d946252c875bfe986ed34927c7f7f0b106dab9cc85b4c702804965eb24c37ad883a8f695587a7b6094d3335bbc").unwrap();
+        let ko = hex::decode("19c8a56db1d2a9afb793dc96fbde4c31").unwrap();
+        cavp_perform(16, MessageDigest::sha256(), &ki, &fixed_input, &ko);
+    }
+
+    #[test]
+    fn cavp_hmac_sha256_24bit() {
+        let ki = hex::decode("388e93e0273e62f086f52f6f5369d9e4626d143dce3b6afc7caf2c6e7344276b")
+            .unwrap();
+        let fixed_input = hex::decode("697bb34b3fbe6853864cac3e1bc6c8c44a4335565479403d949fcbb5e2c1795f9a3849df743389d1a99fe75ef566e6227c591104122a6477dd8e8c8e").unwrap();
+        let ko = hex::decode("d697442b3dd51f96cae949586357b9a6").unwrap();
+        cavp_perform(24, MessageDigest::sha256(), &ki, &fixed_input, &ko);
+    }
+
+    #[test]
+    fn cavp_hmac_sha256_32bit() {
+        let ki = hex::decode("dd1d91b7d90b2bd3138533ce92b272fbf8a369316aefe242e659cc0ae238afe0")
+            .unwrap();
+        let fixed_input = hex::decode("01322b96b30acd197979444e468e1c5c6859bf1b1cf951b7e725303e237e46b864a145fab25e517b08f8683d0315bb2911d80a0e8aba17f3b413faac").unwrap();
+        let ko = hex::decode("10621342bfb0fd40046c0e29f2cfdbf0").unwrap();
+        cavp_perform(32, MessageDigest::sha256(), &ki, &fixed_input, &ko);
+    }
+
+    #[test]
+    fn hmac_sha256_test() {
         let deadbeef = vec![0xDE, 0xAD, 0xBE, 0xEF];
 
         let args = [
@@ -27,6 +84,7 @@ mod tests {
     }
 
     // Tests from OpenSSL 1.1
+    #[cfg(any(implementation = "ossl11", implementation = "ossl3"))]
     #[test]
     fn test_kdf_kbkdf_6803_128() {
         let input_key: [u8; 16] = [
