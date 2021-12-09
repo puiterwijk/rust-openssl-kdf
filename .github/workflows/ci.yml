@@ -29,10 +29,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fedora_version: [35, rawhide]
-        include:
-        - fedora_version: latest
-          build_flags: "--features allow_custom,force_custom"
+        fedora_version:
+        # 35 has OpenSSL 1.1
+        - 35
+        # rawhide (36) has OpenSSL 3.0.0
+        - rawhide
+        features:
+        - "allow_custom"
+        - "deny_custom"
+        - "allow_custom,force_custom"
     container:
       image: "fedora:${{ matrix.fedora_version }}"
     steps:
@@ -40,7 +45,8 @@ jobs:
       - name: Install dependencies
         run: "dnf install -y cargo rustc openssl-devel"
       - name: Test
-        run: "cargo test ${{ matrix.build_flags }}"
+        run: |
+          cargo test --features "${{ matrix.features }}"
 
   build_and_test_ubuntu:
     name: "Tests on Ubuntu"
