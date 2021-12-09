@@ -46,7 +46,7 @@ jobs:
         run: "dnf install -y cargo rustc openssl-devel"
       - name: Test
         run: |
-          cargo test --features "${{ matrix.features }}"
+          cargo test --features "warn_custom,${{ matrix.features }}" -- --nocapture
 
   build_and_test_ubuntu:
     name: "Tests on Ubuntu"

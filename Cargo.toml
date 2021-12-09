@@ -22,8 +22,9 @@ hex = "0.4"
 
 [features]
 allow_custom = []
-force_custom = []
 deny_custom = []
+force_custom = []
+warn_custom = []
 
 [package.metadata.docs.rs]
 features = ["allow_custom"]

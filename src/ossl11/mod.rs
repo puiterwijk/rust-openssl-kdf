@@ -38,6 +38,18 @@ pub(crate) fn perform<'a>(
                     kdf.set_cipher(*mac.get_cipher().unwrap())?;
                 }
             }
+            KdfArgument::R(_) => {
+                return Err(KdfError::UnsupportedOption("R".to_string()));
+            }
+            KdfArgument::UseSeparator(_) => {
+                return Err(KdfError::UnsupportedOption("UseSeparator".to_string()));
+            }
+            KdfArgument::UseL(_) => {
+                return Err(KdfError::UnsupportedOption("UseSeparator".to_string()));
+            }
+            KdfArgument::LBits(_) => {
+                return Err(KdfError::UnsupportedOption("LBits".to_string()));
+            }
         }
     }
 

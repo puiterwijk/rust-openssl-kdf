@@ -17,49 +17,10 @@ impl ToString for Implementation {
     }
 }
 
-impl Implementation {
-    fn supported_args(&self) -> Vec<SupportedArg> {
-        match self {
-            Implementation::Ossl11 => vec![],
-            Implementation::Ossl3 => vec![
-                SupportedArg::R,
-                SupportedArg::UseSeparator,
-                SupportedArg::UseL,
-            ],
-            Implementation::Custom => vec![
-                SupportedArg::R,
-                SupportedArg::UseSeparator,
-                SupportedArg::UseL,
-                SupportedArg::LBits,
-            ],
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-#[allow(unused)]
-enum SupportedArg {
-    R,
-    UseSeparator,
-    UseL,
-    LBits,
-}
-
-impl ToString for SupportedArg {
-    fn to_string(&self) -> String {
-        match self {
-            SupportedArg::R => "r",
-            SupportedArg::UseSeparator => "use_separator",
-            SupportedArg::UseL => "use_l",
-            SupportedArg::LBits => "l_bits",
-        }
-        .to_string()
-    }
-}
-
 #[allow(unreachable_code)]
 fn main() {
-    let implementation: Implementation;
+    #[allow(unused_mut)]
+    let mut available_implementations: Vec<Implementation> = vec![];
 
     #[cfg(not(feature = "force_custom"))]
     {
@@ -69,45 +30,31 @@ fn main() {
             // Determine if this version of OpenSSL has the requisite patch backported
             let kdf_h_cts = std::fs::read_to_string("/usr/include/openssl/kdf.h").unwrap();
             if kdf_h_cts.contains("KDF_CTX_new_id") {
-                implementation = Implementation::Ossl11;
-            } else {
-                #[cfg(not(feature = "allow_custom"))]
-                panic!(
-                    "This version of OpenSSL does not have the necessary patch backported.\n\
-                    Please use a version of OpenSSL that has the necessary patch backported, or\n\
-                    use the `allow_custom` feature to allow the use of the custom implementation."
-                );
-
-                implementation = Implementation::Custom;
+                available_implementations.push(Implementation::Ossl11);
             }
         } else if openssl_version.starts_with("3.") {
-            implementation = Implementation::Ossl3;
-        } else {
-            panic!("No usable OpenSSL version detected in {}. You can enable the 'allow_custom' feature.", openssl_version);
+            available_implementations.push(Implementation::Ossl3);
         }
     }
-    #[cfg(feature = "force_custom")]
+
+    #[cfg(all(feature = "allow_custom", not(feature = "deny_custom")))]
     {
-        #[cfg(not(feature = "allow_custom"))]
-        panic!("Forcing custom without allowing custom");
-
-        eprintln!("WARNING: The `force_custom` feature is enabled. This will cause the custom implementation to be used.");
-        implementation = Implementation::Custom;
+        eprintln!("WARNING: Custom rust-openssl-kdf implementation is enabled");
+        available_implementations.push(Implementation::Custom);
     }
 
-    #[cfg(feature = "deny_custom")]
-    if implementation == Implementation::Custom {
-        panic!("The 'custom' implementation is not allowed");
+    if available_implementations.is_empty() {
+        panic!(
+            "No OpenSSL implementations available.\n\
+            Please use a version of OpenSSL that has the necessary patch backported, or\n\
+            use the `allow_custom` feature to allow the use of the custom implementation."
+        );
     }
 
-    println!(
-        "cargo:rustc-cfg=implementation=\"{}\"",
-        implementation.to_string()
-    );
-    for supported_arg in implementation.supported_args() {
+    for implementation in available_implementations {
         println!(
-            "cargo:rustc-cfg=supported_arg=\"{}\"",
-            supported_arg.to_string()
+            "cargo:rustc-cfg=implementation=\"{}\"",
+            implementation.to_string()
         );
     }
     println!("cargo::rustc-link-lib=crypto");

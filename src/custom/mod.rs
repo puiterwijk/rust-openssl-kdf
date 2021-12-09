@@ -16,6 +16,9 @@ pub(crate) fn perform<'a>(
     args: &[&'a KdfArgument],
     length: usize,
 ) -> Result<Vec<u8>, KdfError> {
+    #[cfg(feature = "warn_custom")]
+    eprintln!("Using custom KDF");
+
     if !matches!(type_, KdfType::KeyBased) {
         return Err(KdfError::Unimplemented("Non-keybased KDF"));
     }

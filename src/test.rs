@@ -6,11 +6,6 @@ mod tests {
     use openssl::{hash::MessageDigest, nid::Nid, symm::Cipher};
 
     // Test cases from the CAVP
-    #[cfg(all(
-        supported_arg = "r",
-        supported_arg = "use_separator",
-        supported_arg = "use_l"
-    ))]
     fn cavp_perform(r: u8, md: MessageDigest, ki: &[u8], fixed: &[u8], expected: &[u8]) {
         let args = [
             &KdfArgument::KbMode(KdfKbMode::Counter),
@@ -24,7 +19,7 @@ mod tests {
         let key_out = crate::perform_kdf(KdfType::KeyBased, &args, expected.len());
         if let Err(e) = key_out {
             if let KdfError::UnsupportedOption(options) = e {
-                eprintln!("\tUnsupported options: {:?}", options);
+                eprintln!("\tCAVP, r: {}, Unsupported options: {:?}", r, options);
                 // Allowing
             } else {
                 panic!("error during derivation: {:?}", e);
@@ -40,11 +35,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(
-        supported_arg = "r",
-        supported_arg = "use_separator",
-        supported_arg = "use_l"
-    ))]
     fn cavp_hmac_sha256_8bit() {
         let ki = hex::decode("3edc6b5b8f7aadbd713732b482b8f979286e1ea3b8f8f99c30c884cfe3349b83")
             .unwrap();
@@ -54,11 +44,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(
-        supported_arg = "r",
-        supported_arg = "use_separator",
-        supported_arg = "use_l"
-    ))]
     fn cavp_hmac_sha256_16bit() {
         let ki = hex::decode("743434c930fe923c350ec202bef28b768cd6062cf233324e21a86c31f9406583")
             .unwrap();
@@ -68,11 +53,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(
-        supported_arg = "r",
-        supported_arg = "use_separator",
-        supported_arg = "use_l"
-    ))]
     fn cavp_hmac_sha256_24bit() {
         let ki = hex::decode("388e93e0273e62f086f52f6f5369d9e4626d143dce3b6afc7caf2c6e7344276b")
             .unwrap();
@@ -82,11 +62,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(
-        supported_arg = "r",
-        supported_arg = "use_separator",
-        supported_arg = "use_l"
-    ))]
     fn cavp_hmac_sha256_32bit() {
         let ki = hex::decode("dd1d91b7d90b2bd3138533ce92b272fbf8a369316aefe242e659cc0ae238afe0")
             .unwrap();
