@@ -23,6 +23,31 @@ jobs:
           command: fmt
           args: --all -- --check
 
+  build_and_test_fedora_openssl_master:
+    name: "Tests on Fedora (OpenSSL master)"
+    runs-on: ubuntu-latest
+    container: fedora:rawhide
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: openssl/openssl
+          path: openssl
+      - name: Install dependencies
+        run: |
+          dnf install -y cargo rustc openssl-devel git 'dnf-command(builddep)'
+          dnf builddep -y openssl
+      - name: Build OpenSSL
+        run: |
+          cd openssl
+          ./config --prefix=/usr --openssldir=/etc/pki/tls shared
+          make -j$(nproc)
+          make install
+      - name: Test
+        run: |
+          CAVP_REQUIRE_ALL=true CAVP_PRINT_SKIP=true cargo test --features "deny_custom" -- --nocapture
+
+
   build_and_test_fedora:
     name: "Tests on Fedora"
     runs-on: ubuntu-latest
