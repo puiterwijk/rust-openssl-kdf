@@ -46,7 +46,7 @@ jobs:
         run: "dnf install -y cargo rustc openssl-devel"
       - name: Test
         run: |
-          cargo test --features "warn_custom,${{ matrix.features }}" -- --nocapture
+          CAVP_PRINT_SKIP=true cargo test --features "warn_custom,${{ matrix.features }}" -- --nocapture
 
   build_and_test_ubuntu:
     name: "Tests on Ubuntu"
@@ -57,4 +57,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: "--features allow_custom"
+          args: "--features allow_custom -- --nocapture"

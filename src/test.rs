@@ -1,73 +1,208 @@
 #[cfg(test)]
 mod tests {
+    use std::io::BufRead;
+
+    const CAVP_PRINT_PASS: Option<&'static str> = option_env!("CAVP_PRINT_PASS");
+    const CAVP_PRINT_SKIP: Option<&'static str> = option_env!("CAVP_PRINT_SKIP");
+    const CAVP_REQUIRE_ALL: Option<&'static str> = option_env!("CAVP_REQUIRE_ALL");
+    const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
+
     #[allow(unused_imports)]
     use crate::{KdfArgument, KdfError, KdfKbMode, KdfMacType, KdfType};
     #[allow(unused_imports)]
     use openssl::{hash::MessageDigest, nid::Nid, symm::Cipher};
 
-    // Test cases from the CAVP
-    fn cavp_perform(r: u8, md: MessageDigest, ki: &[u8], fixed: &[u8], expected: &[u8]) {
-        let args = [
-            &KdfArgument::KbMode(KdfKbMode::Counter),
-            &KdfArgument::Mac(KdfMacType::Hmac(md)),
-            &KdfArgument::Salt(&fixed),
-            &KdfArgument::Key(&ki),
-            &KdfArgument::UseSeparator(false),
-            &KdfArgument::UseL(false),
-            &KdfArgument::R(r),
-        ];
-        let key_out = crate::perform_kdf(KdfType::KeyBased, &args, expected.len());
-        if let Err(e) = key_out {
-            if let KdfError::UnsupportedOption(options) = e {
-                eprintln!("\tCAVP, r: {}, Unsupported options: {:?}", r, options);
-                // Allowing
-            } else {
-                panic!("error during derivation: {:?}", e);
-            }
+    fn parse_kv(line: &str) -> (&str, &str) {
+        let line = if line.starts_with("[") {
+            line[1..line.len() - 1].trim()
         } else {
-            assert_eq!(
-                key_out.unwrap(),
-                expected,
-                "CAVP test case failed: {:?}",
-                args
-            );
+            line
+        };
+        let (key, value) = line.split_once('=').unwrap();
+        (key.trim(), value.trim())
+    }
+
+    fn cmac_to_cipher(value: &str) -> Cipher {
+        match value {
+            "AES128" => Cipher::aes_128_cbc(),
+            "AES192" => Cipher::aes_192_cbc(),
+            "AES256" => Cipher::aes_256_cbc(),
+            _ => panic!("Unsupported CMAC cipher: {}", value),
+        }
+    }
+
+    fn hmac_to_md(value: &str) -> MessageDigest {
+        match value {
+            "SHA1" => MessageDigest::sha1(),
+            "SHA224" => MessageDigest::sha224(),
+            "SHA256" => MessageDigest::sha256(),
+            "SHA384" => MessageDigest::sha384(),
+            "SHA512" => MessageDigest::sha512(),
+            _ => panic!("Unsupported HMAC digest: {}", value),
         }
     }
 
     #[test]
-    fn cavp_hmac_sha256_8bit() {
-        let ki = hex::decode("3edc6b5b8f7aadbd713732b482b8f979286e1ea3b8f8f99c30c884cfe3349b83")
-            .unwrap();
-        let fixed_input = hex::decode("98e9988bb4cc8b34d7922e1c68ad692ba2a1d9ae15149571675f17a77ad49e80c8d2a85e831a26445b1f0ff44d7084a17206b4896c8112daad18605a").unwrap();
-        let ko = hex::decode("6c037652990674a07844732d0ad985f9").unwrap();
-        cavp_perform(8, MessageDigest::sha256(), &ki, &fixed_input, &ko);
-    }
+    fn cavp_kbkdf_counter_mode() {
+        let input_file = std::path::PathBuf::from(&MANIFEST_DIR).join("test_assets/KDFCTR_gen.rsp");
+        let input_file = std::fs::File::open(input_file).unwrap();
+        let reader = std::io::BufReader::new(input_file).lines();
 
-    #[test]
-    fn cavp_hmac_sha256_16bit() {
-        let ki = hex::decode("743434c930fe923c350ec202bef28b768cd6062cf233324e21a86c31f9406583")
-            .unwrap();
-        let fixed_input = hex::decode("9bdb8a454bd55ab30ced3fd420fde6d946252c875bfe986ed34927c7f7f0b106dab9cc85b4c702804965eb24c37ad883a8f695587a7b6094d3335bbc").unwrap();
-        let ko = hex::decode("19c8a56db1d2a9afb793dc96fbde4c31").unwrap();
-        cavp_perform(16, MessageDigest::sha256(), &ki, &fixed_input, &ko);
-    }
+        let mut num_executed = 0;
+        let mut num_passed = 0;
+        let mut num_skipped = 0;
+        let mut num_failed = 0;
 
-    #[test]
-    fn cavp_hmac_sha256_24bit() {
-        let ki = hex::decode("388e93e0273e62f086f52f6f5369d9e4626d143dce3b6afc7caf2c6e7344276b")
-            .unwrap();
-        let fixed_input = hex::decode("697bb34b3fbe6853864cac3e1bc6c8c44a4335565479403d949fcbb5e2c1795f9a3849df743389d1a99fe75ef566e6227c591104122a6477dd8e8c8e").unwrap();
-        let ko = hex::decode("d697442b3dd51f96cae949586357b9a6").unwrap();
-        cavp_perform(24, MessageDigest::sha256(), &ki, &fixed_input, &ko);
-    }
+        let mut mac: Option<KdfMacType> = None;
+        let mut skip_prf = false;
+        let mut correct_ctrlocation = false;
+        let mut rlen: Option<u8> = None;
+        let mut count: Option<u64> = None;
+        let mut len: Option<usize> = None;
+        let mut ki: Option<Vec<u8>> = None;
+        let mut fixed_input: Option<Vec<u8>> = None;
 
-    #[test]
-    fn cavp_hmac_sha256_32bit() {
-        let ki = hex::decode("dd1d91b7d90b2bd3138533ce92b272fbf8a369316aefe242e659cc0ae238afe0")
-            .unwrap();
-        let fixed_input = hex::decode("01322b96b30acd197979444e468e1c5c6859bf1b1cf951b7e725303e237e46b864a145fab25e517b08f8683d0315bb2911d80a0e8aba17f3b413faac").unwrap();
-        let ko = hex::decode("10621342bfb0fd40046c0e29f2cfdbf0").unwrap();
-        cavp_perform(32, MessageDigest::sha256(), &ki, &fixed_input, &ko);
+        for line in reader {
+            let line = line.unwrap();
+            let line = line.trim();
+            if line.len() == 0 || line.starts_with("#") {
+                continue;
+            }
+            let (key, value) = parse_kv(&line);
+            if key != "PRF" && skip_prf {
+                continue;
+            }
+            if (key != "PRF" && key != "CTRLOCATION") && !correct_ctrlocation {
+                continue;
+            }
+            let expected = match key {
+                "PRF" => {
+                    skip_prf = false;
+                    let (prf_type, prf_name) = value.split_once('_').unwrap();
+                    match prf_type {
+                        "CMAC" => match prf_name {
+                            "TDES2" | "TDES3" => skip_prf = true,
+                            name => mac = Some(KdfMacType::Cmac(cmac_to_cipher(name))),
+                        },
+                        "HMAC" => mac = Some(KdfMacType::Hmac(hmac_to_md(prf_name))),
+                        _ => panic!("unknown PRF type: {}", prf_type),
+                    }
+                    continue;
+                }
+                "CTRLOCATION" => {
+                    correct_ctrlocation = value == "BEFORE_FIXED";
+                    continue;
+                }
+                "RLEN" => {
+                    rlen = Some(match value {
+                        "8_BITS" => 8,
+                        "16_BITS" => 16,
+                        "24_BITS" => 24,
+                        "32_BITS" => 32,
+                        _ => panic!("unsupported rlen: {}", value),
+                    });
+                    continue;
+                }
+                "COUNT" => {
+                    count = Some(value.parse::<u64>().unwrap());
+                    continue;
+                }
+                "L" => {
+                    len = Some(value.parse::<usize>().unwrap());
+                    continue;
+                }
+                "KI" => {
+                    ki = Some(hex::decode(value).unwrap());
+                    continue;
+                }
+                "FixedInputDataByteLen" => {
+                    continue;
+                }
+                "FixedInputData" => {
+                    fixed_input = Some(hex::decode(value).unwrap());
+                    continue;
+                }
+                "KO" => {
+                    hex::decode(value).unwrap()
+                    // Not continuing, we have the info to execute this test case
+                }
+                _ => panic!("Unknown CAVP file key: {}", key),
+            };
+            num_executed += 1;
+            let mac = mac.unwrap();
+            let fixed_input = fixed_input.as_ref().unwrap();
+            let ki = ki.as_ref().unwrap();
+            let rlen = rlen.unwrap();
+            let len = len.unwrap();
+            let print_descrip = || {
+                eprintln!("\tExecuting CAVP case, prf: {:?}, ctrlocation: {:?}, rlen: {:?}, count: {:?}, len: {:?}, ki: {:?}, fixed_input: {:?}, expected: {:?}", mac, correct_ctrlocation, rlen, count, len, ki, fixed_input, expected)
+            };
+
+            let mac_arg = KdfArgument::Mac(mac);
+            let fixed_input_arg = KdfArgument::Salt(fixed_input);
+            let ki_arg = KdfArgument::Key(ki);
+            let rlen_arg = KdfArgument::R(rlen);
+
+            let mut args = vec![
+                &KdfArgument::KbMode(KdfKbMode::Counter),
+                &mac_arg,
+                &fixed_input_arg,
+                &ki_arg,
+                &KdfArgument::UseSeparator(false),
+                &KdfArgument::UseL(false),
+            ];
+            if rlen != 32 {
+                args.push(&rlen_arg);
+            }
+            let key_out = crate::perform_kdf(KdfType::KeyBased, &args, len / 8);
+            match key_out {
+                Ok(key) => {
+                    if key == expected {
+                        if CAVP_PRINT_PASS.is_some() {
+                            print_descrip();
+                            eprintln!("\t\tPASSED");
+                        }
+                        num_passed += 1;
+                    } else {
+                        print_descrip();
+                        eprintln!("\t\tFAILED, expected: {:?}, got: {:?}", expected, key);
+                        num_failed += 1;
+                    }
+                }
+                Err(KdfError::UnsupportedOption(options)) => {
+                    if CAVP_PRINT_SKIP.is_some() {
+                        print_descrip();
+                        eprintln!("\t\tSKIPPED, unsupported options: {:?}", options);
+                    }
+                    num_skipped += 1;
+                }
+                Err(KdfError::Unimplemented(msg)) => {
+                    if CAVP_PRINT_SKIP.is_some() {
+                        print_descrip();
+                        eprintln!("\t\tSKIPPED, unimplemented: {}", msg);
+                    }
+                    num_skipped += 1;
+                }
+                e => {
+                    print_descrip();
+                    eprintln!("\t\tFAILED, error: {:?}", e);
+                    num_failed += 1;
+                }
+            }
+        }
+
+        eprintln!("CAVP results:");
+        eprintln!("\tExecuted: {}", num_executed);
+        eprintln!("\tPassed: {}", num_passed);
+        eprintln!("\tSkipped: {}", num_skipped);
+        eprintln!("\tFailed: {}", num_failed);
+
+        if num_failed > 0 {
+            panic!("One or more tests failed");
+        }
+        if num_skipped > 0 && CAVP_REQUIRE_ALL.is_some() {
+            panic!("One or more tests skipped");
+        }
     }
 
     #[test]
