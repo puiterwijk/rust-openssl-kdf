@@ -1,6 +1,6 @@
 [package]
 name = "openssl-kdf"
-version = "0.3.0"
+version = "0.4.0"
 description = "OpenSSL KDF function abstraction"
 license = "MIT"
 homepage = "https://github.com/puiterwijk/rust-openssl-kdf/"
