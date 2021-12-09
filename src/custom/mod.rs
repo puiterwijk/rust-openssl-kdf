@@ -66,7 +66,18 @@ fn perform<'a>(
     let mut key: Option<&'a [u8]> = None;
     let mut label: Option<&'a [u8]> = None;
     let mut context: Option<&'a [u8]> = None;
-    let mut md: Option<MessageDigest> = None;
+    let mut h: Option<usize> = None;
+
+    let mut prf: Option<
+        Box<
+            dyn Fn(
+                &[u8],
+            ) -> Result<
+                Box<dyn Fn(&[u8]) -> Result<Vec<u8>, openssl::error::ErrorStack>>,
+                openssl::error::ErrorStack,
+            >,
+        >,
+    > = None;
 
     for arg in args {
         match arg {
@@ -92,8 +103,16 @@ fn perform<'a>(
                 use_separator = *new_use_separator;
             }
             KdfArgument::Mac(mac) => match mac {
-                KdfMacType::Hmac(new_md) => {
-                    md = Some(*new_md);
+                KdfMacType::Hmac(md) => {
+                    h = Some(get_digest_length_bytes(*md)? * 8);
+                    prf = Some(Box::new(move |key| {
+                        let hmac_key = PKey::hmac(key)?;
+                        Ok(Box::new(move |input| {
+                            let mut signer = Signer::new(*md, &hmac_key)?;
+                            signer.update(input)?;
+                            signer.sign_to_vec()
+                        }))
+                    }));
                 }
                 KdfMacType::Cmac(_) => return Err(KdfError::Unimplemented("CMAC")),
             },
@@ -110,9 +129,9 @@ fn perform<'a>(
     }
 
     let key = key.ok_or(KdfError::MissingArgument("Key"))?;
-    let md = md.ok_or(KdfError::MissingArgument("Digest method"))?;
+    let prf = prf.ok_or(KdfError::MissingArgument("Mac"))?;
+    let h = h.ok_or(KdfError::MissingArgument("h"))?;
 
-    let h = get_digest_length_bytes(md)? * 8;
     let n = ((length * 8) as f32 / h as f32).ceil() as u64;
 
     if n > ((2 ^ r) - 1) {
@@ -124,28 +143,28 @@ fn perform<'a>(
     let lstart = ((64 - lbits) / 8) as usize;
     let l2 = &((length * 8) as u64).to_be_bytes()[lstart..];
 
-    let hmac_key = PKey::hmac(key)?;
     let mut output = Vec::new();
 
-    for i in 1..=n {
-        let mut signer = Signer::new(md, &hmac_key)?;
+    let prf = prf(key)?;
 
-        let i2 = &i.to_be_bytes()[start_pos..];
-        signer.update(i2)?;
+    for i in 1..=n {
+        let mut block = Vec::new();
+
+        block.extend_from_slice(&i.to_be_bytes()[start_pos..]);
         if let Some(label) = label {
-            signer.update(label)?;
+            block.extend_from_slice(label);
         }
         if use_separator {
-            signer.update(&[0x00])?;
+            block.extend_from_slice(&[00]);
         }
         if let Some(context) = context {
-            signer.update(context)?;
+            block.extend_from_slice(context);
         }
         if use_l {
-            signer.update(l2)?;
+            block.extend_from_slice(l2);
         }
 
-        output.extend_from_slice(signer.sign_to_vec()?.as_slice());
+        output.extend_from_slice(&prf(&block)?);
     }
 
     output.truncate(length);
