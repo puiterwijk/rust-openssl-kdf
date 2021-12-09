@@ -21,7 +21,11 @@ impl Implementation {
     fn supported_args(&self) -> Vec<SupportedArg> {
         match self {
             Implementation::Ossl11 => vec![],
-            Implementation::Ossl3 => vec![],
+            Implementation::Ossl3 => vec![
+                SupportedArg::R,
+                SupportedArg::UseSeparator,
+                SupportedArg::UseL,
+            ],
             Implementation::Custom => vec![
                 SupportedArg::R,
                 SupportedArg::UseSeparator,

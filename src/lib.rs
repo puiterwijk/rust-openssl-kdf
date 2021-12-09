@@ -6,7 +6,9 @@ pub enum KdfError {
     #[error("OpenSSL error: {0:?}")]
     OpenSSL(#[from] openssl::error::ErrorStack),
     #[error("Unsupported option for current backend: {0}")]
-    UnsupportedOption(&'static str),
+    UnsupportedOption(String),
+    #[error("Unimplemented option for current backend: {0}")]
+    Unimplemented(&'static str),
     #[error("Required option not specified: {0}")]
     MissingArgument(&'static str),
     #[error("Invalid option provided: {0}")]

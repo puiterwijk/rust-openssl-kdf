@@ -7,7 +7,7 @@ fn get_digest_length_bytes(digest_method: MessageDigest) -> Result<usize, KdfErr
         Nid::SHA256 => Ok(32),
         Nid::SHA384 => Ok(48),
         Nid::SHA512 => Ok(64),
-        _ => Err(KdfError::UnsupportedOption("Invalid digest method")),
+        _ => Err(KdfError::Unimplemented("Invalid digest method")),
     }
 }
 
@@ -17,7 +17,7 @@ pub(crate) fn perform<'a>(
     length: usize,
 ) -> Result<Vec<u8>, KdfError> {
     if !matches!(type_, KdfType::KeyBased) {
-        return Err(KdfError::UnsupportedOption("Non-keybased KDF"));
+        return Err(KdfError::Unimplemented("Non-keybased KDF"));
     }
 
     let mut use_separator = true;
@@ -56,13 +56,17 @@ pub(crate) fn perform<'a>(
                 KdfMacType::Hmac(new_md) => {
                     md = Some(*new_md);
                 }
-                KdfMacType::Cmac(_) => return Err(KdfError::UnsupportedOption("CMAC")),
+                KdfMacType::Cmac(_) => return Err(KdfError::Unimplemented("CMAC")),
             },
             KdfArgument::KbMode(mode) => match mode {
                 KdfKbMode::Counter => {}
-                KdfKbMode::Feedback => return Err(KdfError::UnsupportedOption("Feedback mode")),
+                KdfKbMode::Feedback => {
+                    return Err(KdfError::Unimplemented("Feedback mode"));
+                }
             },
-            KdfArgument::KbSeed(_) => return Err(KdfError::UnsupportedOption("KB-Seed")),
+            KdfArgument::KbSeed(_) => {
+                return Err(KdfError::Unimplemented("KB-Seed"));
+            }
         }
     }
 
