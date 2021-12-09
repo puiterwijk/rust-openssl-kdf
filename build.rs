@@ -34,6 +34,11 @@ fn main() {
             }
         } else if openssl_version.starts_with("3.") {
             available_implementations.push(Implementation::Ossl3);
+            let core_names_h =
+                std::fs::read_to_string("/usr/include/openssl/core_names.h").unwrap();
+            if core_names_h.contains("OSSL_KDF_PARAM_KBKDF_R") {
+                println!("cargo:rustc-cfg=ossl3_supported=\"kbkdf_r\"");
+            }
         }
     }
 

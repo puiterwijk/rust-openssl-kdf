@@ -99,7 +99,7 @@ pub fn perform_kdf<'a>(
 ) -> Result<Vec<u8>, KdfError> {
     let mut last_result = None;
     for implementation in AVAILABLE_IMPLEMENTATIONS {
-        last_result = Some(implementation(type_, args, length));
+        last_result = Some((implementation.func)(type_, args, length));
         match last_result {
             Some(Err(KdfError::Unimplemented(_))) => continue,
             Some(Err(KdfError::UnsupportedOption(_))) => continue,
@@ -115,6 +115,21 @@ pub fn perform_kdf<'a>(
     }
 }
 
+pub fn supports_args<'a>(args: &[&'a KdfArgument]) -> bool {
+    for implementation in AVAILABLE_IMPLEMENTATIONS {
+        if (implementation.supports_args)(args) {
+            return true;
+        }
+    }
+
+    false
+}
+
+struct Implementation {
+    supports_args: &'static dyn Fn(&[&KdfArgument]) -> bool,
+    func: &'static dyn Fn(KdfType, &[&KdfArgument], usize) -> Result<Vec<u8>, KdfError>,
+}
+
 #[cfg(implementation = "custom")]
 mod custom;
 #[cfg(implementation = "ossl11")]
@@ -122,15 +137,13 @@ mod ossl11;
 #[cfg(implementation = "ossl3")]
 mod ossl3;
 
-type ImplFunc = dyn Fn(KdfType, &[&KdfArgument], usize) -> Result<Vec<u8>, KdfError>;
-
-const AVAILABLE_IMPLEMENTATIONS: &[&ImplFunc] = &[
+const AVAILABLE_IMPLEMENTATIONS: &[&Implementation] = &[
     #[cfg(implementation = "ossl11")]
-    &ossl11::perform,
+    &ossl11::IMPLEMENTATION,
     #[cfg(implementation = "ossl3")]
-    &ossl3::perform,
+    &ossl3::IMPLEMENTATION,
     #[cfg(implementation = "custom")]
-    &custom::perform,
+    &custom::IMPLEMENTATION,
 ];
 
 #[cfg(test)]

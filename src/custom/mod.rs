@@ -4,6 +4,8 @@ use crate::{KdfArgument, KdfError, KdfKbMode, KdfMacType, KdfType};
 
 fn get_digest_length_bytes(digest_method: MessageDigest) -> Result<usize, KdfError> {
     match digest_method.type_() {
+        Nid::SHA1 => Ok(20),
+        Nid::SHA224 => Ok(28),
         Nid::SHA256 => Ok(32),
         Nid::SHA384 => Ok(48),
         Nid::SHA512 => Ok(64),
@@ -11,7 +13,41 @@ fn get_digest_length_bytes(digest_method: MessageDigest) -> Result<usize, KdfErr
     }
 }
 
-pub(crate) fn perform<'a>(
+pub(crate) const IMPLEMENTATION: crate::Implementation = crate::Implementation {
+    supports_args: &supports_args,
+    func: &perform,
+};
+
+fn supports_args<'a>(args: &[&'a KdfArgument]) -> bool {
+    use crate::KdfArgument::*;
+    for arg in args {
+        match arg {
+            Key(_) => {}
+            Salt(_) => {}
+            KbInfo(_) => {}
+            R(_) => {}
+            UseSeparator(_) => {}
+            UseL(_) => {}
+            LBits(_) => {}
+            Mac(mac) => match mac {
+                KdfMacType::Hmac(mac) => match get_digest_length_bytes(*mac) {
+                    Ok(_) => {}
+                    Err(_) => return false,
+                },
+                KdfMacType::Cmac(_) => return false,
+            },
+            KbMode(mode) => match mode {
+                KdfKbMode::Counter => {}
+                KdfKbMode::Feedback => return false,
+            },
+            KbSeed(_) => return false,
+        }
+    }
+
+    true
+}
+
+fn perform<'a>(
     type_: crate::KdfType,
     args: &[&'a KdfArgument],
     length: usize,
