@@ -1,4 +1,4 @@
-use openssl::{hash::MessageDigest, nid::Nid, pkey::PKey, sign::Signer};
+use openssl::{hash::MessageDigest, nid::Nid, pkey::PKey, sign::Signer, symm::Cipher};
 
 use crate::{KdfArgument, KdfError, KdfKbMode, KdfMacType, KdfType};
 
@@ -10,6 +10,15 @@ fn get_digest_length_bytes(digest_method: MessageDigest) -> Result<usize, KdfErr
         Nid::SHA384 => Ok(48),
         Nid::SHA512 => Ok(64),
         _ => Err(KdfError::Unimplemented("Invalid digest method")),
+    }
+}
+
+fn get_cipher_length_bytes(cipher: Cipher) -> Result<usize, KdfError> {
+    match cipher.nid() {
+        Nid::AES_128_CBC => Ok(16),
+        Nid::AES_192_CBC => Ok(16),
+        Nid::AES_256_CBC => Ok(16),
+        _ => Err(KdfError::Unimplemented("Invalid cipher")),
     }
 }
 
@@ -34,7 +43,10 @@ fn supports_args<'a>(args: &[&'a KdfArgument]) -> bool {
                     Ok(_) => {}
                     Err(_) => return false,
                 },
-                KdfMacType::Cmac(_) => return false,
+                KdfMacType::Cmac(cipher) => match get_cipher_length_bytes(*cipher) {
+                    Ok(_) => {}
+                    Err(_) => return false,
+                },
             },
             KbMode(mode) => match mode {
                 KdfKbMode::Counter => {}
@@ -114,7 +126,17 @@ fn perform<'a>(
                         }))
                     }));
                 }
-                KdfMacType::Cmac(_) => return Err(KdfError::Unimplemented("CMAC")),
+                KdfMacType::Cmac(cipher) => {
+                    h = Some(get_cipher_length_bytes(*cipher)? * 8);
+                    prf = Some(Box::new(move |key| {
+                        let cmac_key = PKey::cmac(cipher, key)?;
+                        Ok(Box::new(move |input| {
+                            let mut signer = Signer::new_without_digest(&cmac_key)?;
+                            signer.update(input)?;
+                            signer.sign_to_vec()
+                        }))
+                    }));
+                }
             },
             KdfArgument::KbMode(mode) => match mode {
                 KdfKbMode::Counter => {}

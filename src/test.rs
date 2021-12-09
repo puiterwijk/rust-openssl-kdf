@@ -30,12 +30,12 @@ mod tests {
         }
         #[cfg(implementation = "custom")]
         {
-            const CAVP_SHOULD_PASS_CUSTOM: u64 = 800;
+            const CAVP_SHOULD_PASS_CUSTOM: u64 = 1280;
             num_that_should_pass = std::cmp::max(num_that_should_pass, CAVP_SHOULD_PASS_CUSTOM);
         }
         #[cfg(all(implementation = "ossl3", implementation = "custom"))]
         {
-            const CAVP_SHOULD_PASS_CUSTOM_AND_OSSL3: u64 = 920;
+            const CAVP_SHOULD_PASS_CUSTOM_AND_OSSL3: u64 = 960;
             num_that_should_pass =
                 std::cmp::max(num_that_should_pass, CAVP_SHOULD_PASS_CUSTOM_AND_OSSL3);
         }
