@@ -83,13 +83,9 @@ pub enum KdfArgument<'a> {
 
     KbSeed(&'a [u8]),
 
-    #[cfg(supported_arg = "r")]
     R(u8),
-    #[cfg(supported_arg = "use_separator")]
     UseSeparator(bool),
-    #[cfg(supported_arg = "use_l")]
     UseL(bool),
-    #[cfg(supported_arg = "l_bits")]
     LBits(u8),
 
     Mac(KdfMacType),
@@ -101,37 +97,41 @@ pub fn perform_kdf<'a>(
     args: &[&'a KdfArgument],
     length: usize,
 ) -> Result<Vec<u8>, KdfError> {
-    #[cfg(implementation = "ossl11")]
-    {
-        ossl11::perform(type_, args, length)
+    let mut last_result = None;
+    for implementation in AVAILABLE_IMPLEMENTATIONS {
+        last_result = Some(implementation(type_, args, length));
+        match last_result {
+            Some(Err(KdfError::Unimplemented(_))) => continue,
+            Some(Err(KdfError::UnsupportedOption(_))) => continue,
+            Some(_) => break,
+            None => unreachable!(),
+        }
     }
 
-    #[cfg(implementation = "ossl3")]
-    {
-        ossl3::perform(type_, args, length)
-    }
-
-    #[cfg(implementation = "custom")]
-    {
-        custom::perform(type_, args, length)
+    if let Some(result) = last_result {
+        result
+    } else {
+        Err(KdfError::Unimplemented("No implementation available"))
     }
 }
 
+#[cfg(implementation = "custom")]
+mod custom;
 #[cfg(implementation = "ossl11")]
 mod ossl11;
-
 #[cfg(implementation = "ossl3")]
 mod ossl3;
 
-#[cfg(implementation = "custom")]
-mod custom;
+type ImplFunc = dyn Fn(KdfType, &[&KdfArgument], usize) -> Result<Vec<u8>, KdfError>;
 
-#[cfg(not(any(
-    implementation = "ossl11",
-    implementation = "ossl3",
-    implementation = "custom"
-)))]
-compile_error!("No usable implementation detected, and custom not enabled");
+const AVAILABLE_IMPLEMENTATIONS: &[&ImplFunc] = &[
+    #[cfg(implementation = "ossl11")]
+    &ossl11::perform,
+    #[cfg(implementation = "ossl3")]
+    &ossl3::perform,
+    #[cfg(implementation = "custom")]
+    &custom::perform,
+];
 
 #[cfg(test)]
 mod test;

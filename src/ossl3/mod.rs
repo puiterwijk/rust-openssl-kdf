@@ -53,7 +53,6 @@ pub(crate) fn perform<'a>(
             KdfArgument::Salt(salt) => builder.add_slice(sys::OSSL_KDF_PARAM_SALT, salt)?,
             KdfArgument::KbInfo(kbinfo) => builder.add_slice(sys::OSSL_KDF_PARAM_INFO, kbinfo)?,
             KdfArgument::KbSeed(kbseed) => builder.add_slice(sys::OSSL_KDF_PARAM_SEED, kbseed)?,
-            #[cfg(supported_arg = "r")]
             KdfArgument::R(r) => {
                 builder.add_i32(sys::OSSL_KDF_PARAM_KBKDF_R, *r as i32)?;
             }
@@ -86,6 +85,9 @@ pub(crate) fn perform<'a>(
             }
             KdfArgument::KbMode(kb_mode) => {
                 builder.add_string(sys::OSSL_KDF_PARAM_MODE, kb_mode.to_param())?
+            }
+            KdfArgument::LBits(_) => {
+                return Err(KdfError::UnsupportedOption("LBits".to_string()));
             }
         }
     }
