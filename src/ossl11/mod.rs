@@ -45,7 +45,7 @@ pub(crate) fn perform<'a>(
                 return Err(KdfError::UnsupportedOption("UseSeparator".to_string()));
             }
             KdfArgument::UseL(_) => {
-                return Err(KdfError::UnsupportedOption("UseSeparator".to_string()));
+                return Err(KdfError::UnsupportedOption("UseL".to_string()));
             }
             KdfArgument::LBits(_) => {
                 return Err(KdfError::UnsupportedOption("LBits".to_string()));
