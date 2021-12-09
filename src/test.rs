@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::{KdfArgument, KdfKbMode, KdfMacType, KdfType};
+    #[allow(unused_imports)]
+    use crate::{KdfArgument, KdfError, KdfKbMode, KdfMacType, KdfType};
     #[allow(unused_imports)]
     use openssl::{hash::MessageDigest, nid::Nid, symm::Cipher};
 
@@ -20,8 +21,22 @@ mod tests {
             &KdfArgument::UseL(false),
             &KdfArgument::R(r),
         ];
-        let key_out = crate::perform_kdf(KdfType::KeyBased, &args, expected.len()).unwrap();
-        assert_eq!(key_out, expected, "CAVP test case failed: {:?}", args);
+        let key_out = crate::perform_kdf(KdfType::KeyBased, &args, expected.len());
+        if let Err(e) = key_out {
+            if let KdfError::UnsupportedOption(options) = e {
+                eprintln!("\tUnsupported options: {:?}", options);
+                // Allowing
+            } else {
+                panic!("error during derivation: {:?}", e);
+            }
+        } else {
+            assert_eq!(
+                key_out.unwrap(),
+                expected,
+                "CAVP test case failed: {:?}",
+                args
+            );
+        }
     }
 
     #[test]

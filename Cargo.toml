@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 openssl = "0.10"
+openssl-sys = "0.9"
 libc = "0.2"
 foreign-types = "0.3.1"
 thiserror = "1"
