@@ -29,20 +29,11 @@ jobs:
     container: fedora:rawhide
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/checkout@v2
-        with:
-          repository: openssl/openssl
-          path: openssl
       - name: Install dependencies
         run: |
-          dnf install -y cargo rustc openssl-devel git 'dnf-command(builddep)'
-          dnf builddep -y openssl
-      - name: Build OpenSSL
-        run: |
-          cd openssl
-          ./config --prefix=/usr --openssldir=/etc/pki/tls shared
-          make -j$(nproc)
-          make install
+          dnf install -y cargo rustc openssl-devel 'dnf-command(copr)'
+          dnf copr enable -y puiterwijk/openssl-master
+          dnf update -y openssl-libs openssl-devel
       - name: Test
         run: |
           CAVP_REQUIRE_ALL=true CAVP_PRINT_SKIP=true cargo test --features "deny_custom" -- --nocapture
