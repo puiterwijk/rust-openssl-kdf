@@ -5,7 +5,32 @@ use utils::{cvt, cvt_p};
 
 use crate::{KdfArgument, KdfError, KdfType};
 
-pub(crate) fn perform<'a>(
+pub(crate) const IMPLEMENTATION: crate::Implementation = crate::Implementation {
+    supports_args: &supports_args,
+    func: &perform,
+};
+
+fn supports_args<'a>(args: &[&'a KdfArgument]) -> bool {
+    use crate::KdfArgument::*;
+    for arg in args {
+        match arg {
+            Key(_) => {}
+            Salt(_) => {}
+            KbInfo(_) => {}
+            KbSeed(_) => {}
+            R(_) => return false,
+            UseSeparator(_) => return false,
+            UseL(_) => return false,
+            LBits(_) => return false,
+            Mac(_) => {}
+            KbMode(_) => {}
+        }
+    }
+
+    true
+}
+
+fn perform<'a>(
     type_: crate::KdfType,
     args: &[&'a KdfArgument],
     length: usize,

@@ -40,7 +40,35 @@ impl crate::KdfType {
     }
 }
 
-pub(crate) fn perform<'a>(
+pub(crate) const IMPLEMENTATION: crate::Implementation = crate::Implementation {
+    supports_args: &supports_args,
+    func: &perform,
+};
+
+fn supports_args<'a>(args: &[&'a KdfArgument]) -> bool {
+    use crate::KdfArgument::*;
+    for arg in args {
+        match arg {
+            Key(_) => {}
+            Salt(_) => {}
+            KbInfo(_) => {}
+            KbSeed(_) => {}
+            R(_) => {
+                #[cfg(not(ossl3_supported = "kbkdf_r"))]
+                return false;
+            }
+            UseSeparator(_) => {}
+            UseL(_) => {}
+            LBits(_) => return false,
+            Mac(_) => {}
+            KbMode(_) => {}
+        }
+    }
+
+    true
+}
+
+fn perform<'a>(
     type_: crate::KdfType,
     args: &[&'a KdfArgument],
     length: usize,

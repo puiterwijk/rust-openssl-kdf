@@ -12,6 +12,37 @@ mod tests {
     #[allow(unused_imports)]
     use openssl::{hash::MessageDigest, nid::Nid, symm::Cipher};
 
+    fn cavp_tests_that_should_pass() -> u64 {
+        let mut num_that_should_pass = 0;
+
+        #[cfg(implementation = "ossl11")]
+        {
+            const CAVP_SHOULD_PASS_OSSL11: u64 = 0;
+            num_that_should_pass = std::cmp::max(num_that_should_pass, CAVP_SHOULD_PASS_OSSL11);
+        }
+        #[cfg(implementation = "ossl3")]
+        {
+            #[cfg(not(ossl3_supported = "kbkdf_r"))]
+            const CAVP_SHOULD_PASS_OSSL3: u64 = 320;
+            #[cfg(ossl3_supported = "kbkdf_r")]
+            const CAVP_SHOULD_PASS_OSSL3: u64 = 1280;
+            num_that_should_pass = std::cmp::max(num_that_should_pass, CAVP_SHOULD_PASS_OSSL3);
+        }
+        #[cfg(implementation = "custom")]
+        {
+            const CAVP_SHOULD_PASS_CUSTOM: u64 = 800;
+            num_that_should_pass = std::cmp::max(num_that_should_pass, CAVP_SHOULD_PASS_CUSTOM);
+        }
+        #[cfg(all(implementation = "ossl3", implementation = "custom"))]
+        {
+            const CAVP_SHOULD_PASS_CUSTOM_AND_OSSL3: u64 = 920;
+            num_that_should_pass =
+                std::cmp::max(num_that_should_pass, CAVP_SHOULD_PASS_CUSTOM_AND_OSSL3);
+        }
+
+        num_that_should_pass
+    }
+
     fn parse_kv(line: &str) -> (&str, &str) {
         let line = if line.starts_with("[") {
             line[1..line.len() - 1].trim()
@@ -154,6 +185,14 @@ mod tests {
             if rlen != 32 {
                 args.push(&rlen_arg);
             }
+            if !crate::supports_args(&args) {
+                if CAVP_PRINT_SKIP.is_some() {
+                    print_descrip();
+                    eprintln!("\tSKIPPED, unsupported by this backend");
+                }
+                num_skipped += 1;
+                continue;
+            }
             let key_out = crate::perform_kdf(KdfType::KeyBased, &args, len / 8);
             match key_out {
                 Ok(key) => {
@@ -169,21 +208,7 @@ mod tests {
                         num_failed += 1;
                     }
                 }
-                Err(KdfError::UnsupportedOption(options)) => {
-                    if CAVP_PRINT_SKIP.is_some() {
-                        print_descrip();
-                        eprintln!("\t\tSKIPPED, unsupported options: {:?}", options);
-                    }
-                    num_skipped += 1;
-                }
-                Err(KdfError::Unimplemented(msg)) => {
-                    if CAVP_PRINT_SKIP.is_some() {
-                        print_descrip();
-                        eprintln!("\t\tSKIPPED, unimplemented: {}", msg);
-                    }
-                    num_skipped += 1;
-                }
-                e => {
+                Err(e) => {
                     print_descrip();
                     eprintln!("\t\tFAILED, error: {:?}", e);
                     num_failed += 1;
@@ -191,9 +216,11 @@ mod tests {
             }
         }
 
+        let should_pass = cavp_tests_that_should_pass();
+
         eprintln!("CAVP results:");
         eprintln!("\tExecuted: {}", num_executed);
-        eprintln!("\tPassed: {}", num_passed);
+        eprintln!("\tPassed: {} (should be: {})", num_passed, should_pass);
         eprintln!("\tSkipped: {}", num_skipped);
         eprintln!("\tFailed: {}", num_failed);
 
@@ -202,6 +229,9 @@ mod tests {
         }
         if num_skipped > 0 && CAVP_REQUIRE_ALL.is_some() {
             panic!("One or more tests skipped");
+        }
+        if num_passed != should_pass {
+            panic!("Not the correct number of tests passed");
         }
     }
 
