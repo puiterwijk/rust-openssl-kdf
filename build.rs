@@ -17,6 +17,23 @@ impl ToString for Implementation {
     }
 }
 
+fn read_header(lib: &pkg_config::Library, path_rel: &str) -> std::io::Result<String> {
+    for dir in lib
+        .include_paths
+        .iter()
+        .map(|p| p.as_path())
+        .chain(std::iter::once(std::path::Path::new("/usr/include")))
+    {
+        match std::fs::read_to_string(dir.join(path_rel)) {
+            Ok(r) => return Ok(r),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(e),
+        }
+    }
+
+    return Err(std::io::ErrorKind::NotFound.into());
+}
+
 #[allow(unreachable_code)]
 fn main() {
     #[allow(unused_mut)]
@@ -25,17 +42,16 @@ fn main() {
     #[cfg(not(feature = "force_custom"))]
     {
         let openssl = pkg_config::probe_library("openssl").unwrap();
-        let openssl_version = openssl.version;
+        let openssl_version = &openssl.version;
         if openssl_version.starts_with("1.") {
             // Determine if this version of OpenSSL has the requisite patch backported
-            let kdf_h_cts = std::fs::read_to_string("/usr/include/openssl/kdf.h").unwrap();
+            let kdf_h_cts = read_header(&openssl, "openssl/kdf.h").unwrap();
             if kdf_h_cts.contains("KDF_CTX_new_id") {
                 available_implementations.push(Implementation::Ossl11);
             }
         } else if openssl_version.starts_with("3.") {
             available_implementations.push(Implementation::Ossl3);
-            let core_names_h =
-                std::fs::read_to_string("/usr/include/openssl/core_names.h").unwrap();
+            let core_names_h = read_header(&openssl, "openssl/core_names.h").unwrap();
             if core_names_h.contains("OSSL_KDF_PARAM_KBKDF_R") {
                 println!("cargo:rustc-cfg=ossl3_supported=\"kbkdf_r\"");
             }
