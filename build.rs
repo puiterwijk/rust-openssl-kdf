@@ -62,5 +62,5 @@ fn main() {
             implementation.to_string()
         );
     }
-    println!("cargo::rustc-link-lib=crypto");
+    println!("cargo:rustc-link-lib=crypto");
 }
